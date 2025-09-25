@@ -1,3 +1,7 @@
+/*----------------Controllers-------------------- */
+// Aqui ficam as regras de negócio, ou seja, o que cada rota faz
+
+import { getFirestore } from "firebase-admin/firestore";
 import { Request, Response } from "express";
 
 type User = {
@@ -5,31 +9,43 @@ type User = {
         nome:string;
         email:string;
     };
-    let id = 0;
-    /* Usamos o middleware express.json() para que o express entenda requisições com JSON no corpo */
+    
+    /* Usei o middleware express.json() para que o express entenda requisições com JSON no corpo */
     let usuarios:User[]= []; 
 
 export class UsersController {
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
-static getAll(req: Request, res: Response) {
-            res.send(usuarios);
+/* Criamos uma rota /users que quando acessada com o método GET, retorna todos os usuários cadastrados
+- 1* etapa Criamos uma rota /users que quando acessada com o método GET, chama o método getAll da classe UserController
+- 2* etapa O método getAll é responsável por enviar a lista de usuários como resposta.
+*/
+static async getAll(req: Request, res: Response) {
+   const snapshot =  await getFirestore().collection("users").get(); 
+   const users = snapshot.docs.map(doc => {
+    return {
+        id: doc.id,
+        ...doc.data()
+        };
+   });       
+    
+    res.send(users);
     }
 
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
-    /* Criamos uma rota /users/:id que quando acessada com o método GET, retorna as informações de um usuário 
+    /* Criei uma rota /users/:id que quando acessada com o método GET, retorna as informações de um usuário 
     específico com base no ID fornecido na URL 
     
     - Para isso é necessario converter o ID de string para número, pois os parâmetros de rota são sempre strings.
     - Usamos o método find para localizar o usuário com o ID correspondente no array de usuários
     - Enviamos o usuário encontrado como resposta. Se nenhum usuário for encontrado, será retornado undefined.
     */
-static getById(req:Request, res:Response) {
-        let userId =Number(req.params.id);
-        let user = usuarios.find(user => user.id === userId);
-        res.send(user);
-    }
+static getById(req:Request,res:Response){
+let userID =Number(req.params.id);
+let user = usuarios.find((_user:User)=>_user.id === userID);
+res.send(user);
+}
 
 
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -65,13 +81,12 @@ static update(req:Request, res:Response) {
 - 3* etapa Adicionamos o novo usuário ao array de usuários
 - 4* etapa Enviamos uma mensagem de sucesso como resposta.
 */
-static save(req:Request, res:Response){
+static async save(req:Request, res:Response){
 
     let user = req.body;
-    user.id = ++id;
-    usuarios.push(user);
+    const userSalvo = await getFirestore().collection("users").add(user);
     res.send({
-        message: "Usuário adicionado com sucesso",
+        message: `Usuário ${userSalvo.id} adicionado com sucesso`
     });
 };
 /*--------------------------------------------------------------------------------------------------------------------------*/
@@ -81,16 +96,15 @@ static save(req:Request, res:Response){
 - 3* etapa Usamos o método splice para remover o usuário do array com base no índice encontrado
 - 4* etapa Enviamos uma mensagem de sucesso como resposta.
 */
-static deleteById (req:Request,res:Response){
-
-    let userId = Number(req.params.id);
-    let indexOF = usuarios.findIndex((_user:User)=> _user.id === userId);
+static deleteById(req:Request,res:Response){
+    let userID = Number(req.params.id);
+    let indexOF = usuarios.findIndex((_user:User) => _user.id === userID);
     usuarios.splice(indexOF,1);
-
     res.send({
-        message:"Usuario deletado com Sucesso!!!!"
-    })
-};
+        message: "Usuário removido com sucesso",
+    });
+    
+}
 /*--------------------------------------------------------------------------------------------------------------------------*/
 
 
